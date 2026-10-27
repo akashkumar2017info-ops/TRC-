@@ -1,0 +1,95 @@
+{
+ "jobs": {
+  "TRC123": {
+   "id": "TRC123",
+   "cust": "IHOI",
+   "board": "LITE",
+   "date": "2026-10-27",
+   "by": "GITA",
+   "pri": "Normal",
+   "created": 1793126035761,
+   "ref": "FAZIL SIR",
+   "dept": "TRC for Repair",
+   "errCode": "LI",
+   "errDesc": "KJ",
+   "stage": "nr",
+   "dx": "Non-Repairable",
+   "proposed": "",
+   "nrReason": "Repair cost too high",
+   "nrOther": "",
+   "pend": "",
+   "pendOther": "",
+   "rep": "Ready for Repair",
+   "repEng": "",
+   "testEng": "",
+   "fin": "",
+   "log": [
+    {
+     "t": "28 Oct, 12:04 am",
+     "m": "Non-repairable: Repair cost too high"
+    },
+    {
+     "t": "28 Oct, 12:04 am",
+     "m": "Sent to diagnosis"
+    },
+    {
+     "t": "28 Oct, 12:03 am",
+     "m": "TRC Received"
+    }
+   ],
+   "imgs": []
+  },
+  "TRC1234": {
+   "id": "TRC1234",
+   "cust": "AJAKAHS",
+   "board": "LITE",
+   "date": "2026-10-27",
+   "by": "GITA",
+   "pri": "Normal",
+   "created": 1793128911452,
+   "ref": "FAZIL SIR",
+   "dept": "TRC for Repair",
+   "errCode": "G",
+   "errDesc": "NV",
+   "stage": "testing",
+   "dx": "Repairable",
+   "proposed": "JU",
+   "nrReason": "",
+   "nrOther": "",
+   "pend": "",
+   "pendOther": "",
+   "rep": "Repair Completed",
+   "repEng": "Akhilesh",
+   "testEng": "",
+   "fin": "",
+   "log": [
+    {
+     "t": "28 Oct, 12:52 am",
+     "m": "Sent to PCB Under Testing"
+    },
+    {
+     "t": "28 Oct, 12:52 am",
+     "m": "Repair completed"
+    },
+    {
+     "t": "28 Oct, 12:52 am",
+     "m": "Repair started by Akhilesh"
+    },
+    {
+     "t": "28 Oct, 12:52 am",
+     "m": "Repairable: moved to Repair Queue"
+    },
+    {
+     "t": "28 Oct, 12:52 am",
+     "m": "Sent to diagnosis"
+    },
+    {
+     "t": "28 Oct, 12:51 am",
+     "m": "TRC Received"
+    }
+   ],
+   "imgs": []
+  }
+ },
+ "counter": 1000
+}

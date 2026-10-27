@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PCB repair workflow</title>
+<style>
+:root{--bg:#e3e8e0;--panel:#f6f8f3;--ink:#16201c;--mute:#5b6a63;--line:#c4cdc3;--mask:#0e5a44;--mi:#fff;--gold:#b8921e;--red:#b3261e;--blue:#2b5fa8;--sh:rgba(22,32,28,.14);--h:"Bricolage Grotesque",Arial,sans-serif;--b:"IBM Plex Sans",Arial,sans-serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101714;--panel:#18211d;--ink:#e6ede8;--mute:#93a39a;--line:#2c3a33;--mask:#2f9c78;--mi:#06140f;--gold:#d9b543;--red:#ef7b72;--blue:#79a8e8;--sh:rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{--bg:#101714;--panel:#18211d;--ink:#e6ede8;--mute:#93a39a;--line:#2c3a33;--mask:#2f9c78;--mi:#06140f;--gold:#d9b543;--red:#ef7b72;--blue:#79a8e8;--sh:rgba(0,0,0,.5)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--b)}
+header{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:16px 20px;background:var(--mask);color:var(--mi)}
+h1{font:700 24px/1 var(--h);margin:0}.sp{flex:1}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.btn{border:1.5px solid currentColor;background:transparent;border-radius:6px;padding:7px 14px;font-weight:600}
+.btn.solid{background:var(--ink);color:var(--bg);border-color:var(--ink)}header .btn.solid{background:var(--mi);color:var(--mask);border-color:var(--mi)}
+.stats{display:flex;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--line)}
+.stat{flex:1 1 130px;padding:10px 20px;border-right:1px solid var(--line)}.stat b{display:block;font:700 24px/1.1 var(--h)}.stat span{color:var(--mute);font-size:13px}
+.tools{display:flex;gap:10px;padding:14px 20px}.tools input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;padding:0 20px 28px;overflow-x:auto}
+.col{background:color-mix(in srgb,var(--panel) 60%,transparent);border:1px solid var(--line);border-radius:8px;min-height:260px}
+.col h2{font:700 14px var(--h);margin:0;padding:11px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.cards{padding:8px;display:grid;gap:8px;align-content:start}.empty{color:var(--mute);font-size:13px;padding:6px}
+.card{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:6px;padding:10px 11px;text-align:left;width:100%}
+.card[data-p="High"]{border-left-color:var(--gold)}.card[data-p="Urgent"]{border-left-color:var(--red)}
+.card small{color:var(--mute);display:block}.card .t{font-weight:600}
+.badge{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--mask);color:var(--mi)}
+.badge.w{background:var(--gold);color:#1b1500}.badge.r{background:var(--red);color:#fff}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);padding:0;width:min(580px,94vw);max-height:92vh}
+dialog::backdrop{background:rgba(10,16,13,.55)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}.dh h3{margin:0;font:700 19px var(--h)}
+.db{padding:16px 18px;display:grid;gap:12px;overflow:auto;max-height:72vh}
+.db label{display:grid;gap:4px;font-size:13px;font-weight:500;color:var(--mute)}
+.db input,.db select,.db textarea{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;color:var(--ink)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.df{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line)}
+.steps{display:flex;gap:4px;flex-wrap:wrap}.steps i{font-style:normal;font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}.steps i.on{background:var(--mask);color:var(--mi);border-color:var(--mask)}
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:14px}.sum span{color:var(--mute)}
+.err{color:var(--red);font-size:13px;font-weight:600;min-height:1em}
+.log{border-left:2px solid var(--line);padding-left:12px;display:grid;gap:6px;font-size:13px;color:var(--mute)}
+.sec{font:700 15px var(--h)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}.thumbs img{width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer}
+@media (max-width:560px){.row{grid-template-columns:1fr}.board{grid-auto-columns:84%}}
+</style></head><body>
+<header><h1>PCB repair workflow</h1><div class="sp"></div><span id="mode" style="font-size:13px;opacity:.85"></span><button class="btn" id="lock"></button><button class="btn" id="exp">Export CSV</button><button class="btn solid" id="add">1 · Receive PCB</button></header>
+<section class="stats" id="stats"></section>
+<div class="tools"><input id="q" type="search" placeholder="Search by Job ID, customer or board" aria-label="Search jobs" autocomplete="off"><span id="cnt" style="font-size:13px;color:var(--mute);white-space:nowrap;align-self:center"></span></div>
+<main class="board" id="board"></main>
+
+<dialog id="dNew"><div class="dh"><h3>Step 1 · PCB Received</h3><button class="btn" data-x>Close</button></div>
+<div class="db"><label>Reference by<input id="nRef" maxlength="60" placeholder="Reference person name"></label>
+<label>Job ID<input id="nId" maxlength="40" placeholder="Type the job ID"></label>
+<div class="row"><label>Customer name<input id="nC"></label><label>Board name<input id="nB"></label></div>
+<div class="row"><label>Date received<input id="nD" type="date"></label><label>Received by<input id="nR"></label></div>
+<div class="row"><label>Priority<select id="nP"><option>Normal</option><option>High</option><option>Urgent</option></select></label><label>Assigned department<select id="nDp"><option value="">Select department…</option><option>TRC for Repair</option><option>Not Problem Found</option><option>Testing</option></select></label></div>
+<div id="nErrW" style="display:none;gap:12px"><label>Error code<input id="nEc"></label><label>Error code description<textarea id="nEd" rows="2"></textarea></label></div><label>Upload images (optional)<input id="nImg" type="file" accept="image/*" multiple></label><div class="thumbs" id="nPrev"></div><div class="err" id="nErr"></div></div>
+<div class="df"><button class="btn solid" id="nSave">Save PCB Received</button></div></dialog>
+
+<dialog id="dLogin"><div class="dh"><h3>Password required to edit</h3><button class="btn" data-x>Close</button></div><div class="db"><label>Password<input id="lp" type="password" maxlength="32" autocomplete="off"></label><div class="err" id="lErr"></div></div><div class="df"><button class="btn solid" id="lGo">Unlock editing</button></div></dialog>
+<dialog id="dImg"><div class="dh"><h3>Image</h3><button class="btn" data-x>Close</button></div><div class="db"><img id="bigImg" alt="PCB image" style="max-width:100%"></div></dialog>
+<dialog id="dJ"><div class="dh"><h3 id="jT"></h3><button class="btn" data-x>Close</button></div><div class="db" id="jB"></div><div class="df" id="jF"></div></dialog>
+
+<script>
+const COLS=[["received","1 · TRC Received"],["diagnosis","2 · Diagnosis"],["repair","3 · Repair"],["testing","4 · PCB Under Testing"],["dispatch","5 · Completed and dispatched"],["nr","Non-repairable"]];
+const NR=["PCB tracks severely damaged","CPU / BGA damage","Critical IC unavailable","Excessive component damage","PCB physically burnt or broken","Repair cost too high","Other"];
+const PEND=["Component Not Available","Component Order Pending","Waiting for Supplier","Waiting for Customer Approval","Waiting for Repair Authorization","PCB / Technical Information Required","Special Equipment Required","Senior Engineer Assistance Required","Repair Queue / Workload","Other"];
+const DX=["Repairable","Non-Repairable","Pending for Repair","Under Further Diagnosis"];
+const FIN=["QC Passed","Ready for Dispatch","Dispatched","Delivered / Job Closed"];
+const ENG=["Akhilesh","Ajay","Akash"],TEST=["Gitanjali","Aman","Aqram","Shahnawaj","Tabish","Sonam","Ravinder","Gauraw"];
+const KEY="pcb-wf-v3";let jobs=[],seq=1001,cur=null;
+const useFiles=()=>typeof API!=="undefined"&&API,maxImg=()=>useFiles()?5:2;
+const isrc=s=>String(s).startsWith("data:")?s:"/images/"+encodeURIComponent(s);
+function imgBlock(j){return j.imgs&&j.imgs.length?'<div class="thumbs">'+j.imgs.map(s=>'<img src="'+isrc(s)+'" data-big="'+isrc(s)+'" alt="PCB image">').join("")+"</div>":""}
+function shrink(file,max,q){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?ok(b):no(new Error("Could not read an image")),"image/jpeg",q)};im.onerror=()=>no(new Error("Could not read one of the images"));im.src=u})}
+function getImgs(files){if(!files.length)return Promise.resolve([]);const f=useFiles();
+return Promise.all(files.map(x=>shrink(x,f?1600:640,f?.82:.55))).then(bl=>f?Promise.all(bl.map(b=>fetch("/api/upload",{method:"POST",headers:{"X-Auth":TOKEN},body:b}).then(r=>{if(r.status===401){lockOut();askLogin();throw new Error("Password needed. Unlock, then save again.")}if(!r.ok)throw new Error("Image upload failed. Try again.");return r.json()}).then(d=>d.file))):Promise.all(bl.map(b=>new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.readAsDataURL(b)}))).then(a=>{if(a.join("").length>190000)throw new Error("Images are too big for shared mode. Use fewer or smaller images.");return a}))}
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today=()=>new Date().toISOString().slice(0,10),now=()=>new Date().toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+const mk=(c,b,by,p,o={})=>({id:"PCB-"+(seq++),cust:c,board:b,date:today(),by,pri:p,created:Date.now(),ref:"",dept:"",errCode:"",errDesc:"",stage:"received",dx:"",proposed:"",nrReason:"",nrOther:"",pend:"",pendOther:"",rep:"Ready for Repair",repEng:"",testEng:"",fin:"",log:[{t:now(),m:"TRC Received"}],...o});
+let TOKEN="",LCB=null;try{TOKEN=sessionStorage.getItem("tok")||""}catch(e){}
+function updateLock(){$("#lock").textContent=TOKEN?"Editing unlocked \u00b7 Lock":"Locked \u00b7 Unlock to edit"}
+function lockOut(){TOKEN="";try{sessionStorage.removeItem("tok")}catch(e){}updateLock()}
+function askLogin(cb){LCB=cb;$("#lp").value="";$("#lErr").textContent="";$("#dLogin").showModal();$("#lp").focus()}
+function doLogin(){fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:$("#lp").value})}).then(r=>r.json().then(d=>({s:r.status,d}))).then(({s,d})=>{if(s===200){TOKEN=d.token;try{sessionStorage.setItem("tok",TOKEN)}catch(e){}updateLock();$("#dLogin").close();if(LCB)LCB()}else $("#lErr").textContent=d.error||"Wrong password"}).catch(()=>{$("#lErr").textContent="Server not reachable"})}
+let API=false,last={},pend=0;
+function save(){if(!API){try{localStorage.setItem(KEY,JSON.stringify({jobs,seq}))}catch(e){}return}
+jobs.forEach(j=>{const s=JSON.stringify(j);if(last[j.id]!==s){last[j.id]=s;pend++;fetch("/api/jobs/"+encodeURIComponent(j.id),{method:"PUT",headers:{"Content-Type":"application/json","X-Auth":TOKEN},body:s}).then(r=>{if(r.status===401){lockOut();setTimeout(poll,300)}}).catch(()=>{$("#mode").textContent="Server not reachable: change not saved"}).finally(()=>pend--)}})}
+function apply(list){const keep=cur&&$("#dJ").open?cur:null;jobs=list.map(j=>keep&&j.id===keep.id?keep:j);jobs.forEach(j=>{if(!keep||j.id!==keep.id)last[j.id]=JSON.stringify(j)});seq=Math.max(1001,...jobs.map(j=>(+String(j.id).slice(4)||0)+1));render()}
+function poll(){if(pend)return;fetch("/api/jobs").then(r=>r.json()).then(l=>{apply(l);$("#mode").textContent="Office network: live, shared by everyone"}).catch(()=>{$("#mode").textContent="Server not reachable"})}
+function initApi(){if(location.protocol==="file:")return;fetch("/api/jobs").then(r=>{if(!r.ok)throw 0;return r.json()}).then(l=>{API=true;apply(l);$("#mode").textContent="Office network: live, shared by everyone";setInterval(poll,4000)}).catch(()=>{})}
+function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r){jobs=r.jobs;seq=r.seq;return}}catch(e){}
+jobs=[mk("Lakshmi Drives","Servo driver rev C","Anil","Urgent",{repEng:"Akhilesh"}),
+mk("Faridabad Packaging","PLC I/O board","Meera","High",{stage:"diagnosis",dx:"Pending for Repair",pend:"Component Order Pending",repEng:"Ajay"}),
+mk("Kiran Audio","Class-D amp module","Anil","Normal",{stage:"repair",dx:"Repairable",proposed:"Replace Q4 and Q5, reflow output stage.",rep:"Under Repair",repEng:"Akash"}),
+mk("Verma Textiles","Inverter control card","Meera","Urgent",{stage:"testing",dx:"Repairable",proposed:"Replace U3 gate driver.",rep:"Repair Completed",repEng:"Akhilesh",testEng:"Aman Aqram"}),
+mk("Sai Instruments","Handheld meter PCB","Anil","Normal",{stage:"nr",dx:"Non-Repairable",nrReason:"PCB physically burnt or broken"})];save()}
+function badge(j){const s=j.stage;
+if(s==="received")return'<span class="badge w">Awaiting diagnosis</span>';
+if(s==="diagnosis")return`<span class="badge ${j.dx==="Pending for Repair"?"w":""}">${esc(j.dx||"Awaiting diagnosis")}</span>${j.dx==="Pending for Repair"?"<small>"+esc(j.pend==="Other"?j.pendOther:j.pend)+"</small>":""}`;
+if(s==="repair")return`<span class="badge ${j.rep==="Repair On Hold"?"w":""}">${j.rep}</span>`;
+if(s==="testing")return`<span class="badge">Under testing</span>`;
+if(s==="dispatch")return`<span class="badge">${j.fin}</span>`;
+return`<span class="badge r">Non-repairable</span><small>${esc(j.nrReason==="Other"?j.nrOther:j.nrReason)}</small>`}
+function render(){const q=$("#q").value.trim().toLowerCase(),open=jobs.filter(j=>j.stage!=="nr"&&!(j.stage==="dispatch"&&j.fin===FIN[3]));
+$("#stats").innerHTML=[["Open jobs",open.length],["Urgent",open.filter(j=>j.pri==="Urgent").length],["Pending for repair",jobs.filter(j=>j.stage==="diagnosis"&&j.dx==="Pending for Repair").length],["Under repair",jobs.filter(j=>j.stage==="repair"&&j.rep==="Under Repair").length],["Under testing",jobs.filter(j=>j.stage==="testing").length]].map(s=>`<div class="stat"><b>${s[1]}</b><span>${s[0]}</span></div>`).join("");
+const rank={Urgent:0,High:1,Normal:2};
+$("#board").innerHTML=COLS.map(([k,n])=>{const c=jobs.filter(j=>j.stage===k&&(!q||[j.id,j.cust,j.board,j.ref,j.dept,j.errCode,j.errDesc].join(" ").toLowerCase().includes(q))).reverse().sort((a,b)=>(b.created||0)-(a.created||0));
+return`<section class="col"><h2>${n}<span>${c.length}</span></h2><div class="cards">${c.length?c.map(j=>`<button class="card" data-id="${j.id}" data-p="${j.pri}"><small>${j.id} · ${j.pri}</small><div class="t">${esc(j.cust)}</div><small>${esc(j.board)}</small>${j.ref?"<small>Reference by: "+esc(j.ref)+"</small>":""}${j.dept?"<small>"+esc(j.dept)+"</small>":""}${j.imgs&&j.imgs.length?"<small>Images: "+j.imgs.length+"</small>":""}${j.errCode?"<small>Error "+esc(j.errCode)+"</small>":""}${j.repEng&&j.stage!=="diagnosis"?"<small><b>Repair engineer: "+esc(j.repEng)+"</b></small>":(j.stage==="received"&&j.dept==="TRC for Repair"?"<small>Repair engineer: not assigned</small>":"")}${j.testEng?"<small>Tester: "+esc(j.testEng)+"</small>":""}${badge(j)}</button>`).join(""):'<div class="empty">No jobs here.</div>'}</div></section>`}).join("");
+document.querySelectorAll(".card").forEach(e=>e.onclick=()=>openJob(e.dataset.id));$("#cnt").textContent=q?document.querySelectorAll(".card").length+" of "+jobs.length+" jobs found":jobs.length+" jobs"}
+function go(j,stage,msg){j.stage=stage;j.log.unshift({t:now(),m:msg});save();render();openJob(j.id)}
+function sel(f,opts,v,re,ph){return`<select data-f="${f}" ${re?"data-r":""}><option value="">${ph||"Select…"}</option>${opts.map(o=>`<option ${o===v?"selected":""}>${o}</option>`).join("")}</select>`}
+function delJob(j){fetch("/api/jobs/"+encodeURIComponent(j.id),{method:"DELETE",headers:{"X-Auth":TOKEN}}).then(r=>{if(r.status===401){lockOut();askLogin();openJob(j.id);return}if(!r.ok)throw 0;jobs=jobs.filter(x=>x!==j);delete last[j.id];render();$("#dJ").close()}).catch(()=>{$("#mode").textContent="Could not delete the job";openJob(j.id)})}
+function openJob(id){cur=jobs.find(x=>x.id===id);const j=cur,si=["received","diagnosis","repair","testing","dispatch"].indexOf(j.stage);
+$("#jT").textContent=j.id+" · "+j.cust;let h="",f="";
+h+=`<div class="steps">${["1 TRC Received","2 Diagnosis","3 Repair","4 PCB Under Testing","5 Dispatch"].map((s,i)=>`<i class="${i===si?"on":""}">${s}</i>`).join("")}${j.stage==="nr"?'<i class="on">Non-repairable</i>':""}</div>
+<div class="sum"><div><span>Board</span><br>${esc(j.board)}</div><div><span>Priority</span><br>${j.pri}</div><div><span>Date received</span><br>${j.date}</div><div><span>Received by</span><br>${esc(j.by)}</div>${j.stage==="diagnosis"?"":`<div><span>Repair engineer</span><br>${sel("repEng",ENG,j.repEng,1,"Select repair engineer…")}</div>`}<div><span>Testing engineer</span><br>${esc(j.testEng)||"—"}</div><div><span>Department</span><br>${esc(j.dept)||"—"}</div><div><span>Reference by</span><br>${esc(j.ref)||"—"}</div>${j.errCode?`<div style="grid-column:1/-1"><span>Error code</span><br><b>${esc(j.errCode)}</b> — ${esc(j.errDesc)}</div>`:""}</div>${imgBlock(j)}`;
+const btn=(i,t,c)=>f+=`<button class="btn ${c||"solid"}" id="${i}">${t}</button>`;
+if(j.stage==="received"){h+='<div class="sec">Ready for diagnosis</div>';btn("a1","Send to diagnosis")}
+else if(j.stage==="diagnosis"){h+=`<div class="sec">Step 2 · PCB diagnosis</div><label>Diagnosis result${sel("dx",DX,j.dx,1)}</label>`;
+if(j.dx==="Repairable")h+=`<label>Proposed repair details<textarea data-f="proposed" rows="3">${esc(j.proposed)}</textarea></label>`;
+if(j.dx==="Non-Repairable")h+=`<label>Non-repairable reason (required)${sel("nrReason",NR,j.nrReason,1)}</label>${j.nrReason==="Other"?`<label>Specify other reason<input data-f="nrOther" value="${esc(j.nrOther)}"></label>`:""}`;
+if(j.dx==="Pending for Repair")h+=`<label>Pending reason (required)${sel("pend",PEND,j.pend,1)}</label>${j.pend==="Other"?`<label>Specify other reason<input data-f="pendOther" value="${esc(j.pendOther)}"></label>`:""}`;
+h+='<div class="err" id="err"></div>';if(j.dx)btn("a2",{"Repairable":"Move to Repair Queue","Non-Repairable":"Confirm non-repairable","Pending for Repair":"Save pending status","Under Further Diagnosis":"Save, keep diagnosing"}[j.dx])}
+else if(j.stage==="repair"){h+=`<div class="sec">Step 3 · PCB under repair</div><div><span style="color:var(--mute)">Proposed repair:</span> ${esc(j.proposed)||"—"}</div><div><span class="badge ${j.rep==="Repair On Hold"?"w":""}">${j.rep}</span></div><div class="err" id="err"></div>`;
+if(j.rep==="Ready for Repair")btn("r1","Start repair");
+if(j.rep==="Under Repair"){btn("r2","Repair completed");btn("r3","Put on hold","")}
+if(j.rep==="Repair On Hold")btn("r4","Resume repair");
+if(j.rep==="Repair Completed")btn("r5","Send to PCB Under Testing")}
+else if(j.stage==="testing"){h+=`<div class="sec">Step 4 · PCB Under Testing</div><label>Testing engineer name${sel("testEng",TEST,j.testEng)}</label><div class="err" id="err"></div>`;btn("t1","Send back to repair","");btn("t2","Testing passed")}
+else if(j.stage==="dispatch"){h+=`<div class="sec">Step 5 · Completed and dispatched</div><div><span class="badge">${j.fin}</span></div>`;const n=FIN[FIN.indexOf(j.fin)+1];if(n)btn("d1","Mark as "+n);else h+='<div>Job closed.</div>'}
+else h+=`<div class="sec">Non-repairable</div><div>${esc(j.nrReason==="Other"?j.nrOther:j.nrReason)}</div>`;
+h+=`<div class="sec">History</div><div class="log">${j.log.map(l=>`<div>${l.t} · ${esc(l.m)}</div>`).join("")}</div>`;
+f+='<button class="btn" id="jDel" style="color:var(--red);margin-right:auto">Delete job</button>';$("#jB").innerHTML=h;$("#jF").innerHTML=f;
+document.querySelectorAll("[data-f]").forEach(e=>e.onchange=()=>{j[e.dataset.f]=e.value;save();render();if(e.hasAttribute("data-r"))openJob(j.id)});
+const on=(i,fn)=>{const e=$("#"+i);if(e)e.onclick=fn},er=m=>{$("#err").textContent=m;return false};
+on("jDel",()=>{$("#jF").innerHTML='<span style="margin-right:auto;font-weight:600">Delete '+esc(j.id)+' permanently?</span><button class="btn" id="jNo">Cancel</button><button class="btn" id="jYes" style="background:var(--red);border-color:var(--red);color:#fff">Yes, delete</button>';$("#jNo").onclick=()=>openJob(j.id);$("#jYes").onclick=()=>delJob(j)});
+on("a1",()=>go(j,"diagnosis","Sent to diagnosis"));
+on("a2",()=>{if(j.dx==="Repairable"){if(!j.proposed.trim())return er("Enter the proposed repair details.");j.rep="Ready for Repair";go(j,"repair","Repairable: moved to Repair Queue")}
+else if(j.dx==="Non-Repairable"){if(!j.nrReason)return er("Select a non-repairable reason.");if(j.nrReason==="Other"&&!j.nrOther.trim())return er("Specify the other reason.");go(j,"nr","Non-repairable: "+(j.nrReason==="Other"?j.nrOther:j.nrReason))}
+else if(j.dx==="Pending for Repair"){if(!j.pend)return er("Select a pending reason.");if(j.pend==="Other"&&!j.pendOther.trim())return er("Specify the other reason.");go(j,"diagnosis","Pending for repair: "+(j.pend==="Other"?j.pendOther:j.pend));$("#dJ").close()}
+else{go(j,"diagnosis","Under further diagnosis");$("#dJ").close()}});
+const rp=(s,m)=>{j.rep=s;go(j,"repair",m)};
+on("r1",()=>{if(!j.repEng.trim())return er("Select the repair engineer first.");rp("Under Repair","Repair started by "+j.repEng)});
+on("r2",()=>rp("Repair Completed","Repair completed"));on("r3",()=>rp("Repair On Hold","Repair put on hold"));on("r4",()=>rp("Under Repair","Repair resumed"));
+on("r5",()=>go(j,"testing","Sent to PCB Under Testing"));
+on("t1",()=>{j.rep="Under Repair";go(j,"repair","Testing failed: sent back to repair")});
+on("t2",()=>{if(!j.testEng.trim())return er("Select the testing engineer.");j.fin=FIN[0];go(j,"dispatch","Testing passed, tested by "+j.testEng)});
+on("d1",()=>{j.fin=FIN[FIN.indexOf(j.fin)+1];go(j,"dispatch",j.fin);if(j.fin===FIN[3])render()});
+if(!TOKEN){document.querySelectorAll("#jB input,#jB select,#jB textarea").forEach(e=>{const u=ev=>{if(ev.type==="keydown"&&ev.key==="Tab")return;ev.preventDefault();askLogin(()=>openJob(j.id))};e.addEventListener("mousedown",u);e.addEventListener("keydown",u)});$("#jB").insertAdjacentHTML("afterbegin",'<div class="err">Locked. Tap any field or "Unlock to edit" and enter the password.</div>');document.querySelectorAll("#jF button").forEach(e=>e.style.display="none");$("#jF").insertAdjacentHTML("beforeend",'<button class="btn solid" id="jU">Unlock to edit</button>');$("#jU").onclick=()=>askLogin(()=>openJob(j.id))}
+if(!$("#dJ").open)$("#dJ").showModal()}
+const openNew=()=>{$("#nId").value="";$("#nD").value=today();["nC","nB","nR","nRef"].forEach(i=>$("#"+i).value="");$("#nP").value="Normal";$("#nDp").value="";$("#nEc").value="";$("#nEd").value="";$("#nErrW").style.display="none";$("#nErr").textContent="";$("#nImg").value="";$("#nPrev").innerHTML="";$("#dNew").showModal()};
+$("#add").onclick=()=>TOKEN?openNew():askLogin(openNew);
+$("#nSave").onclick=()=>{const c=$("#nC").value.trim(),b=$("#nB").value.trim(),r=$("#nR").value.trim(),id=$("#nId").value.trim();if(!/^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/.test(id)){$("#nErr").textContent="Enter a Job ID: letters, numbers, - . _ only (up to 40 characters).";return}
+if(jobs.some(x=>String(x.id).toLowerCase()===id.toLowerCase())){$("#nErr").textContent="This Job ID already exists.";return}
+if(!c||!b||!r||!$("#nD").value||!$("#nDp").value||!$("#nRef").value.trim()){$("#nErr").textContent="Fill in reference by, customer, board, date, received by and assigned department.";return}
+if($("#nDp").value==="TRC for Repair"&&(!$("#nEc").value.trim()||!$("#nEd").value.trim())){$("#nErr").textContent="Error code and error code description are required for TRC for Repair.";return}
+const fl=[...$("#nImg").files].slice(0,maxImg());$("#nSave").disabled=true;$("#nErr").textContent=fl.length?"Preparing images…":"";getImgs(fl).then(im=>{$("#nSave").disabled=false;$("#nErr").textContent="";const j=mk(c,b,r,$("#nP").value);j.id=id;j.imgs=im;j.ref=$("#nRef").value.trim();j.dept=$("#nDp").value;if(j.dept==="TRC for Repair"){j.errCode=$("#nEc").value.trim();j.errDesc=$("#nEd").value.trim()}j.date=$("#nD").value;const fin=()=>{jobs.unshift(j);save();render();$("#dNew").close()};if(API){fetch("/api/jobs",{method:"POST",headers:{"Content-Type":"application/json","X-Auth":TOKEN},body:JSON.stringify(j)}).then(x=>{if(x.status===401){lockOut();askLogin();return}if(x.status===409){$("#nErr").textContent="This Job ID already exists.";return}if(!x.ok){$("#nErr").textContent="Could not save. Try again.";return}last[j.id]=JSON.stringify(j);jobs.unshift(j);render();$("#dNew").close()}).catch(()=>{$("#nErr").textContent="Server not reachable"})}else fin()}).catch(e=>{$("#nSave").disabled=false;$("#nErr").textContent=(e&&e.message)||"Image problem"})};
+document.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>b.closest("dialog").close());
+$("#q").oninput=render;$("#nImg").onchange=()=>{$("#nPrev").innerHTML="";[...$("#nImg").files].slice(0,maxImg()).forEach(f=>{const i=document.createElement("img");i.src=URL.createObjectURL(f);$("#nPrev").appendChild(i)});$("#nErr").textContent=$("#nImg").files.length>maxImg()?"Only the first "+maxImg()+" images will be saved.":""};document.addEventListener("click",e=>{const t=e.target;if(t.dataset&&t.dataset.big){$("#bigImg").src=t.dataset.big;$("#dImg").showModal()}});updateLock();$("#lock").onclick=()=>TOKEN?lockOut():askLogin();$("#lGo").onclick=doLogin;$("#lp").onkeydown=e=>{if(e.key==="Enter")doLogin()};$("#nDp").onchange=()=>{$("#nErrW").style.display=$("#nDp").value==="TRC for Repair"?"grid":"none"};
+$("#exp").onclick=()=>{const h=["id","customer","board","date","received_by","reference_by","department","error_code","error_description","priority","stage","diagnosis","repair_status","testing_engineer","final_status"];
+const r=jobs.map(j=>[j.id,j.cust,j.board,j.date,j.by,j.ref,j.dept,j.errCode,j.errDesc,j.pri,j.stage,j.dx,j.rep,j.testEng,j.fin].map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(","));
+const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent([h.join(","),...r].join("\n"));a.download="pcb-jobs.csv";a.click()};
+
+load();render();initApi();
+</script></body></html>
